@@ -50,8 +50,8 @@
 # 方式A: scp 上传
 scp seedbox_setup.sh root@your-server:/root/
 
-# 方式B: 服务器上直接下载（如果你将脚本托管到了 GitHub）
-wget https://raw.githubusercontent.com/your-repo/seedbox_setup.sh
+# 方式B: 服务器上直接下载
+wget https://raw.githubusercontent.com/blu-jeans/seedbox_2026/main/seedbox_setup.sh
 ```
 
 ### 2. 赋权并执行

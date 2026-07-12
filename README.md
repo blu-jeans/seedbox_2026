@@ -16,12 +16,12 @@
 | **幂等安全** | 每步执行前检测，重复运行不会重复写入或覆盖已有配置 |
 | **彩色日志** | 终端实时输出：🟢 成功 / 🔴 失败 / 🟡 跳过 / 🔵 信息 |
 | **文件日志** | 全量日志自动归档至 `/var/log/seedbox_setup/` |
-| **汇总报告** | 执行结束后打印 14 步表格总览 + 成功/失败/跳过计数 |
-| **智能兜底** | 关键组件提供多安装源自动 Fallback（如 Docker、qBittorrent） |
+| **汇总报告** | 执行结束后打印 13 步表格总览 + 成功/失败/跳过计数 |
+| **智能兜底** | 关键组件提供多安装源自动 Fallback（如 Docker、FileBrowser） |
 
 ---
 
-## 📦 安装清单 (14 步)
+## 📦 安装清单 (13 步)
 
 | # | 组件 | 说明 |
 |---|------|------|
@@ -33,12 +33,11 @@
 | 6 | **inotify 限制** | `max_user_watches` / `max_user_instances` 提升至 524288 |
 | 7 | **wondershaper** | 网卡限速工具，全局可用 `wondershaper` 命令 |
 | 8 | **rclone** | 官方稳定版，云存储同步/挂载瑞士军刀 |
-| 9 | **qBittorrent-nox** | 4.3.9 静态编译版，附带 systemd 服务文件 |
-| 10 | **Python 3.12** | 源码编译 `altinstall`（不覆盖系统 Python），含 pip3 |
-| 11 | **系统监控工具集** | `nload` `iftop` `htop` `ncdu` `iotop` |
-| 12 | **fio** | 硬盘 IO 基准测试工具 |
-| 13 | **FileBrowser** | 现代化 Web 文件管理器，内置账号密码认证 |
-| 14 | **Docker** | Docker CE + Docker Compose v2 插件 |
+| 9 | **Python 3.12** | 源码编译 `altinstall`（不覆盖系统 Python），含 pip3 |
+| 10 | **系统监控工具集** | `nload` `iftop` `htop` `ncdu` `iotop` |
+| 11 | **fio** | 硬盘 IO 基准测试工具 |
+| 12 | **FileBrowser** | 现代化 Web 文件管理器，内置账号密码认证 |
+| 13 | **Docker** | Docker CE + Docker Compose v2 插件 |
 
 ---
 
@@ -69,13 +68,13 @@ sudo ./seedbox_setup.sh
 ╔══════════════════════════════════════════════════════════════╗
 ║               📊  安装结果汇总报告                         ║
 ╠══════════════════════════════════════════════════════════════╣
-  [ 1/14]  IPv4 优先                   ✅ 成功
-  [ 2/14]  基础工具                    ✅ 成功
-  [ 3/14]  RAR 最新稳定版              ✅ 成功
+  [ 1/13]  IPv4 优先                   ✅ 成功
+  [ 2/13]  基础工具                    ✅ 成功
+  [ 3/13]  RAR 最新稳定版              ✅ 成功
   ...
-  [14/14]  Docker + Compose            ✅ 成功
+  [13/13]  Docker + Compose            ✅ 成功
 ╠══════════════════════════════════════════════════════════════╣
-  成功: 14    失败: 0    跳过: 0
+  成功: 13    失败: 0    跳过: 0
 ╠══════════════════════════════════════════════════════════════╣
   完成时间: 2026-07-01 16:30:45 CST
   详细日志: /var/log/seedbox_setup/setup_20260701_163000.log
@@ -288,7 +287,6 @@ rm -rf /tmp/docker-test
 /srv/filebrowser/                    # FileBrowser 默认共享目录
 
 /etc/systemd/system/
-├── qbittorrent-nox.service          # qBittorrent systemd 服务
 └── filebrowser.service              # FileBrowser systemd 服务
 
 /root/
@@ -302,10 +300,9 @@ rm -rf /tmp/docker-test
 
 | 服务 | 端口 | 默认账号 | 用途 |
 |------|------|----------|------|
-| qBittorrent WebUI | `8080` | admin / adminadmin | BT 下载管理 |
 | FileBrowser | `8081` | admin / admin | HTTP 文件下载 |
 
-> ⚠️ **安全提示**: 两个 Web 服务均使用默认密码，**请首次登录后立即修改**。生产环境建议配合 Nginx 反向代理 + SSL 证书使用。
+> ⚠️ **安全提示**: Web 服务默认密码为 `admin`，**请首次登录后立即修改**。生产环境建议配合 Nginx 反向代理 + SSL 证书使用。
 
 ---
 
@@ -317,7 +314,6 @@ ls -lt /var/log/seedbox_setup/ | head -2
 cat /var/log/seedbox_setup/setup_<时间戳>.log
 
 # 查看某个服务的实时日志
-journalctl -u qbittorrent-nox -f
 journalctl -u filebrowser -f
 journalctl -u docker -f
 ```
@@ -326,7 +322,6 @@ journalctl -u docker -f
 
 | 问题 | 排查方向 |
 |------|----------|
-| qBittorrent 下载失败 | 检查防火墙是否开放 8080 端口 |
 | FileBrowser 无法访问 | `systemctl status filebrowser`，检查 8081 端口 |
 | Docker 启动失败 | `journalctl -u docker --no-pager`，检查内核版本 |
 | Python 编译耗时过长 | 正常现象，`--enable-optimizations` 约需 5~15 分钟 |
@@ -342,7 +337,7 @@ journalctl -u docker -f
 **1. 修改计数器和名称数组（脚本顶部）：**
 
 ```bash
-TOTAL_STEPS=15          # 14 → 15
+TOTAL_STEPS=14          # 13 → 14
 
 STEP_NAMES=(
     ...
@@ -354,19 +349,19 @@ STEP_NAMES=(
 
 ```bash
 # =============================================================================
-#  [15/15] 新工具
+#  [14/14] 新工具
 # =============================================================================
 log_step "安装新工具"
 
 if command -v newtool &>/dev/null; then
     log_warn "新工具已安装，跳过"
-    mark_result 14 "SKIP"    # 索引 = 步骤号 - 1
+    mark_result 13 "SKIP"    # 索引 = 步骤号 - 1
 else
     # ... 安装逻辑 ...
     if 安装成功; then
-        mark_result 14 "OK"
+        mark_result 13 "OK"
     else
-        mark_result 14 "FAIL"
+        mark_result 13 "FAIL"
     fi
 fi
 ```

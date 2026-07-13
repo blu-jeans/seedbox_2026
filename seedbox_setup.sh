@@ -14,12 +14,11 @@
 #    [6]  inotify 内核限制解除
 #    [7]  wondershaper 限速工具 (全局命令)
 #    [8]  rclone 稳定版
-#    [9]  qBittorrent-nox 4.3.9
-#    [10] Python 3.12 + pip3
-#    [11] 系统监控工具集 (nload iftop htop ncdu iotop)
-#    [12] 硬盘 IO 基准测试 (fio)
-#    [13] FileBrowser HTTP 文件下载服务 (带认证)
-#    [14] Docker + Docker Compose 稳定版
+#    [9]  Python 3.12 + pip3
+#    [10] 系统监控工具集 (nload iftop htop ncdu iotop)
+#    [11] 硬盘 IO 基准测试 (fio)
+#    [12] FileBrowser HTTP 文件下载服务 (带认证)
+#    [13] Docker + Docker Compose 稳定版
 #===============================================================================
 
 set -euo pipefail
@@ -464,16 +463,16 @@ SYSCTL_CHANGED=0
 # max_user_watches
 if grep -qE "^fs\.inotify\.max_user_watches\s*=" "$SYSCTL_CONF" 2>/dev/null; then
     CURRENT_VAL=$(grep -oP '^fs\.inotify\.max_user_watches\s*=\s*\K\d+' "$SYSCTL_CONF" || echo "0")
-    if [[ "$CURRENT_VAL" -ge 524288 ]]; then
+    if [[ "$CURRENT_VAL" -ge 4194304 ]]; then
         log_info "  ✓ max_user_watches 已设置为 $CURRENT_VAL，跳过"
     else
-        log_info "  → max_user_watches 当前值 $CURRENT_VAL，更新为 524288"
-        sed -i "s/^fs\.inotify\.max_user_watches\s*=.*/fs.inotify.max_user_watches=524288/" "$SYSCTL_CONF"
+        log_info "  → max_user_watches 当前值 $CURRENT_VAL，更新为 4194304"
+        sed -i "s/^fs\.inotify\.max_user_watches\s*=.*/fs.inotify.max_user_watches=4194304/" "$SYSCTL_CONF"
         SYSCTL_CHANGED=1
     fi
 else
-    echo "fs.inotify.max_user_watches=524288" >> "$SYSCTL_CONF"
-    log_ok "  ✓ max_user_watches=524288 已写入"
+    echo "fs.inotify.max_user_watches=4194304" >> "$SYSCTL_CONF"
+    log_ok "  ✓ max_user_watches=4194304 已写入"
     SYSCTL_CHANGED=1
 fi
 
@@ -502,7 +501,7 @@ fi
 LIVE_WATCHES=$(cat /proc/sys/fs/inotify/max_user_watches 2>/dev/null || echo "N/A")
 LIVE_INSTANCES=$(cat /proc/sys/fs/inotify/max_user_instances 2>/dev/null || echo "N/A")
 log_ok "当前生效值: max_user_watches=$LIVE_WATCHES, max_user_instances=$LIVE_INSTANCES"
-if [[ "$LIVE_WATCHES" != "524288" && "$LIVE_WATCHES" != "4194304" ]] || [[ "$LIVE_INSTANCES" != "524288" ]]; then
+if [[ "$LIVE_WATCHES" != "4194304" ]] || [[ "$LIVE_INSTANCES" != "524288" ]]; then
     log_warn "  提示: 实测生效值与期望值不完全吻合。这可能是由于当前使用的是 LXC/OpenVZ 虚拟化容器，无法修改宿主机共享的内核参数。此情况属于正常限制，不影响基础软件运行。"
 fi
 mark_result 5 "OK"

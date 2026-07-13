@@ -30,7 +30,7 @@
 | 3 | **RAR** | 从 rarlab.com 下载最新稳定版，安装 `rar` + `unrar` |
 | 4 | **VIM 模版** | 部署自定义 `.vimrc` + `.vim/` 经典配置 |
 | 5 | **时区** | 固定为 `Asia/Shanghai` 北京时间，同步硬件时钟 |
-| 6 | **inotify 限制** | `max_user_watches` / `max_user_instances` 提升至 524288 |
+| 6 | **inotify 限制** | `max_user_watches` 提升至 4194304，`max_user_instances` 提升至 524288 |
 | 7 | **wondershaper** | 网卡限速工具，全局可用 `wondershaper` 命令 |
 | 8 | **rclone** | 官方稳定版，云存储同步/挂载瑞士军刀 |
 | 9 | **Python 3.12** | 源码编译 `altinstall`（不覆盖系统 Python），含 pip3 |
@@ -99,7 +99,7 @@ grep "precedence.*::ffff" /etc/gai.conf
 # 期望输出: precedence  ::ffff:0:0/96   100
 
 # inotify 限制
-cat /proc/sys/fs/inotify/max_user_watches     # 应为 524288
+cat /proc/sys/fs/inotify/max_user_watches     # 应为 4194304
 cat /proc/sys/fs/inotify/max_user_instances   # 应为 524288
 
 # 基础工具
@@ -168,23 +168,6 @@ wondershaper -c -a enp4s0
 rclone --version
 # 配置远程存储
 rclone config
-```
-
-### qBittorrent-nox 验证
-
-```bash
-# 查看版本
-qbittorrent-nox --version
-
-# 启动服务 (首次需确认法律条款)
-systemctl enable --now qbittorrent-nox
-
-# 检查运行状态
-systemctl status qbittorrent-nox
-
-# WebUI 访问地址
-# http://<服务器IP>:8080
-# 默认账号: admin  密码: adminadmin (首次登录后修改)
 ```
 
 ### Python 3.12 验证
@@ -275,7 +258,6 @@ rm -rf /tmp/docker-test
 /usr/local/bin/
 ├── rar                              # RAR 压缩工具
 ├── unrar                            # RAR 解压工具
-├── qbittorrent-nox                  # qBittorrent 无头版
 └── filebrowser                      # FileBrowser 二进制
 
 /opt/wondershaper/                   # wondershaper 仓库目录

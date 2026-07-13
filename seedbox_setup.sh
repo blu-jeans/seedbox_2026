@@ -611,59 +611,104 @@ if [[ -n "$PY312_CMD" ]]; then
     fi
     mark_result 8 "SKIP"
 else
-    # 从源码编译安装 Python 3.12
-    PY_VERSION="3.12.8"
-    PY_URL="https://www.python.org/ftp/python/${PY_VERSION}/Python-${PY_VERSION}.tar.xz"
+    # 优先使用 python-build-standalone 提供的预编译独立版 Python 3.12，避免耗时的编译过程
+    PY_BIN_VERSION="3.12.7"
+    BUILD_DATE="20241016"
+    
+    if [[ "$ARCH" == "x86_64" ]]; then
+        PY_ARCH="x86_64-unknown-linux-gnu"
+    elif [[ "$ARCH" == "aarch64" ]]; then
+        PY_ARCH="aarch64-unknown-linux-gnu"
+    else
+        PY_ARCH=""
+    fi
 
-    log_info "安装编译依赖..."
-    apt-get install -y -qq \
-        build-essential zlib1g-dev libncurses5-dev libgdbm-dev \
-        libnss3-dev libssl-dev libreadline-dev libffi-dev \
-        libsqlite3-dev libbz2-dev liblzma-dev \
-        >> "$LOG_FILE" 2>&1
+    PY_INSTALLED=0
 
-    TMP_PY=$(mktemp -d)
-    log_info "下载 Python $PY_VERSION 源码..."
-
-    if wget -q --show-progress --no-check-certificate -O "$TMP_PY/Python.tar.xz" "$PY_URL" 2>> "$LOG_FILE"; then
-        cd "$TMP_PY"
-        tar -xf Python.tar.xz >> "$LOG_FILE" 2>&1
-        cd "Python-${PY_VERSION}"
-
-        log_info "配置编译参数 (--enable-optimizations)... 这可能需要几分钟"
-        ./configure --enable-optimizations --prefix=/usr/local >> "$LOG_FILE" 2>&1
-
-        # 获取 CPU 核心数用于并行编译
-        NPROC=$(nproc 2>/dev/null || echo 2)
-        log_info "开始编译 (并行线程: $NPROC)... 这可能需要 5~15 分钟"
-        make -j"$NPROC" >> "$LOG_FILE" 2>&1
-
-        log_info "安装 Python $PY_VERSION (altinstall 模式，不覆盖系统 Python)..."
-        make altinstall >> "$LOG_FILE" 2>&1
-
-        cd /
+    if [[ -n "$PY_ARCH" ]]; then
+        PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${BUILD_DATE}/cpython-${PY_BIN_VERSION}+${BUILD_DATE}-${PY_ARCH}-install_only.tar.gz"
+        log_info "检测到系统架构: $ARCH，正在通过预编译二进制安装 Python ${PY_BIN_VERSION} (免编译极速版)..."
+        
+        TMP_PY=$(mktemp -d)
+        
+        # 尝试直接下载，失败则使用代理加速下载
+        if wget -q --show-progress --no-check-certificate -O "$TMP_PY/python-bin.tar.gz" "${PROXY_PREFIX:-}${PY_URL}" 2>> "$LOG_FILE" || \
+           wget -q --show-progress --no-check-certificate -O "$TMP_PY/python-bin.tar.gz" "https://mirror.ghproxy.com/${PY_URL}" 2>> "$LOG_FILE"; then
+            
+            log_info "下载成功，正在解压部署..."
+            tar -xf "$TMP_PY/python-bin.tar.gz" -C "$TMP_PY" >> "$LOG_FILE" 2>&1
+            
+            if [[ -d "$TMP_PY/python/install" ]]; then
+                # 清理可能存在的旧目录
+                rm -rf /usr/local/python3.12
+                mkdir -p /usr/local/python3.12
+                # 移动到 /usr/local/python3.12
+                cp -rf "$TMP_PY/python/install"/* /usr/local/python3.12/
+                
+                # 创建软链接到 /usr/local/bin
+                ln -sf /usr/local/python3.12/bin/python3 /usr/local/bin/python3.12
+                # python-build-standalone 默认包含 pip3，我们链接它
+                if [[ -f /usr/local/python3.12/bin/pip3 ]]; then
+                    ln -sf /usr/local/python3.12/bin/pip3 /usr/local/bin/pip3.12
+                fi
+                
+                # 验证是否成功
+                if /usr/local/bin/python3.12 --version &>/dev/null; then
+                    log_ok "Python ${PY_BIN_VERSION} 预编译版部署成功，耗时仅数秒！"
+                    PY_INSTALLED=1
+                    mark_result 8 "OK"
+                fi
+            fi
+        fi
         rm -rf "$TMP_PY"
+    fi
 
-        # 验证
-        if command -v python3.12 &>/dev/null; then
-            log_ok "Python 安装成功: $(python3.12 --version)"
+    # 兜底方案：如果预编译版下载或运行失败，则使用源码编译安装
+    if [[ $PY_INSTALLED -eq 0 ]]; then
+        log_warn "预编译包部署失败或不支持的架构，正在切换回源码编译模式 (这可能需要 5~15 分钟)..."
+        PY_SRC_VERSION="3.12.8"
+        PY_SRC_URL="https://www.python.org/ftp/python/${PY_SRC_VERSION}/Python-${PY_SRC_VERSION}.tar.xz"
 
-            # 确保 pip 可用
-            python3.12 -m ensurepip --upgrade >> "$LOG_FILE" 2>&1 || true
-            python3.12 -m pip install --upgrade pip >> "$LOG_FILE" 2>&1 || true
+        log_info "安装编译依赖..."
+        apt-get install -y -qq \
+            build-essential zlib1g-dev libncurses5-dev libgdbm-dev \
+            libnss3-dev libssl-dev libreadline-dev libffi-dev \
+            libsqlite3-dev libbz2-dev liblzma-dev \
+            >> "$LOG_FILE" 2>&1
 
-            PIP_VER=$(python3.12 -m pip --version 2>/dev/null || echo "N/A")
-            log_ok "pip3 版本: $PIP_VER"
+        TMP_PY=$(mktemp -d)
+        log_info "下载 Python $PY_SRC_VERSION 源码..."
 
-            mark_result 8 "OK"
+        if wget -q --show-progress --no-check-certificate -O "$TMP_PY/Python.tar.xz" "$PY_SRC_URL" 2>> "$LOG_FILE"; then
+            cd "$TMP_PY"
+            tar -xf Python.tar.xz >> "$LOG_FILE" 2>&1
+            cd "Python-${PY_SRC_VERSION}"
+
+            log_info "配置编译参数 (--enable-optimizations)..."
+            ./configure --enable-optimizations --prefix=/usr/local >> "$LOG_FILE" 2>&1
+
+            NPROC=$(nproc 2>/dev/null || echo 2)
+            log_info "开始编译 (并行线程: $NPROC)..."
+            make -j"$NPROC" >> "$LOG_FILE" 2>&1
+            make altinstall >> "$LOG_FILE" 2>&1
+
+            cd /
+            rm -rf "$TMP_PY"
+
+            if command -v python3.12 &>/dev/null; then
+                log_ok "Python 源码编译安装成功: $(python3.12 --version)"
+                python3.12 -m ensurepip --upgrade >> "$LOG_FILE" 2>&1 || true
+                python3.12 -m pip install --upgrade pip >> "$LOG_FILE" 2>&1 || true
+                mark_result 8 "OK"
+            else
+                log_err "Python 编译安装后命令不可用"
+                mark_result 8 "FAIL"
+            fi
         else
-            log_err "Python 编译安装后命令不可用"
+            log_err "Python 源码下载失败"
+            rm -rf "$TMP_PY"
             mark_result 8 "FAIL"
         fi
-    else
-        log_err "Python 源码下载失败"
-        rm -rf "$TMP_PY"
-        mark_result 8 "FAIL"
     fi
 fi
 

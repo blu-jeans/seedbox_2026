@@ -33,7 +33,7 @@
 | 6 | **inotify 限制** | `max_user_watches` 提升至 4194304，`max_user_instances` 提升至 524288 |
 | 7 | **wondershaper** | 网卡限速工具，全局可用 `wondershaper` 命令 |
 | 8 | **rclone** | 官方稳定版，云存储同步/挂载瑞士军刀 |
-| 9 | **Python 3.12** | 源码编译 `altinstall`（不覆盖系统 Python），含 pip3 |
+| 9 | **Python 3.12** | 优先部署预编译独立版（免编译极速版），若失败自动切换源码编译，含 pip3 |
 | 10 | **系统监控工具集** | `nload` `iftop` `htop` `ncdu` `iotop` |
 | 11 | **fio** | 硬盘 IO 基准测试工具 |
 | 12 | **FileBrowser** | 现代化 Web 文件管理器，内置账号密码认证 |
@@ -173,7 +173,7 @@ rclone config
 ### Python 3.12 验证
 
 ```bash
-python3.12 --version          # Python 3.12.8
+python3.12 --version          # 应输出 Python 3.12.x
 python3.12 -m pip --version   # pip 版本
 
 # 测试安装第三方包
